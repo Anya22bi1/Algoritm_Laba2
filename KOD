@@ -1,0 +1,312 @@
+#include <iostream>
+#include <string>
+#include <exception>
+#include <vector>
+#include <stdexcept>
+#include <sstream>
+#include <algorithm>
+
+// Константа, определяющая размер двоичного числа
+const int BINARY_SIZE = 8;
+
+// Определение класса для исключения, связанного с переполнением стека
+class StackOverflowException : public std::exception {
+public:
+    const char* what() const throw() {
+        return "Stack Overflow!";
+    }
+};
+
+// Определение класса для исключения, связанного с пустым стеком
+class StackUnderflowException : public std::exception {
+public:
+    const char* what() const throw() {
+        return "Stack Underflow!";
+    }
+};
+
+// Узел связного списка
+struct Node {
+    std::string value;
+    Node* next;
+    Node(std::string val) : value(val), next(nullptr) {}
+};
+
+// Класс стека на основе связного списка
+class Stack {
+private:
+    Node* top;
+
+public:
+    Stack() : top(nullptr) {} // Конструктор
+
+    ~Stack() { // Деструктор
+        while (top) {
+            Node* temp = top;
+            top = top->next;
+            delete temp;
+        }
+    }
+
+    void push(const std::string& value) { // Добавление нового узла
+        Node* newNode = new Node(value);
+        newNode->next = top;
+        top = newNode;
+    }
+
+    std::string pop() { // Удаление узла с вершины стека и возврат значения
+        if (!top) {
+            throw StackUnderflowException();
+        }
+        std::string value = top->value;
+        Node* temp = top;
+        top = top->next;
+        delete temp;
+        return value;
+    }
+
+    bool isEmpty() const { //доп проверка на пустоту стека, задает nullptr если стек пуст
+        return top == nullptr;
+    }
+};
+
+// Класс для работы с двоичными числами
+class BinaryNumber {
+public:
+    // Функция для сложения двух двоичных чисел
+    static std::string addBinary(const std::string& a, const std::string& b) {
+        std::string result;
+        int sum = 0;
+        int i = a.size() - 1, j = b.size() - 1;
+        while (i >= 0 || j >= 0 || sum == 1) {
+            sum += ((i >= 0) ? a[i] - '0' : 0);
+            sum += ((j >= 0) ? b[j] - '0' : 0);
+            result = char(sum % 2 + '0') + result;
+            sum /= 2;
+            i--; j--;
+        }
+        return result;
+    }
+
+    // Функция для вычитания двух двоичных чисел
+    static std::string subtractBinary(const std::string& a, const std::string& b) {
+        std::string result = "";
+        int borrow = 0;
+
+        int i = a.length() - 1;
+        int j = b.length() - 1;
+        while (i >= 0 || j >= 0) {
+            int diff = (i >= 0 ? a[i--] - '0' : 0) - (j >= 0 ? b[j--] - '0' : 0) - borrow;
+            if (diff >= 0) {
+                result = char(diff + '0') + result;
+                borrow = 0;
+            }
+            else {
+                result = char(diff + 2 + '0') + result;
+                borrow = 1;
+            }
+        }
+
+        while (result.length() > 1 && result[0] == '0') {
+            result.erase(0, 1);
+        }
+
+        return result;
+    }
+
+    // Функция для умножения двух двоичных чисел
+    static std::string multiplyBinary(const std::string& a, const std::string& b) {
+        std::string result = "0";
+
+        std::string a_rev = a;
+        std::string b_rev = b;
+        std::reverse(a_rev.begin(), a_rev.end());
+        std::reverse(b_rev.begin(), b_rev.end());
+
+        for (size_t i = 0; i < b_rev.length(); ++i) {
+            if (b_rev[i] == '1') {
+                std::string temp = a_rev;
+                for (size_t j = 0; j < i; ++j) {
+                    temp = '0' + temp;
+                }
+                result = addBinary(result, std::string(temp.rbegin(), temp.rend()));
+            }
+        }
+
+        while (result.length() > 1 && result[0] == '0') {
+            result.erase(0, 1);
+        }
+
+        return result;
+    }
+
+
+    void reverseString(char* str, int length) {
+        int start = 0;
+        int end = length - 1;
+        while (start < end) {
+            char temp = str[start];
+            str[start] = str[end];
+            str[end] = temp;
+            start++;
+            end--;
+        }
+    }
+
+    // Перевод из 2ой в 10ую СИ
+    static int toDecimal(const std::string& binary) {
+        if (binary[0] == '1') { // Если число отрицательное
+            // Инвертируем биты и добавляем 1 для получения десятичного значения
+            for (char& bit : binary) {
+                bit = bit == '1' ? '0' : '1';
+            }
+            int decimal = 1;
+            int result = 0;
+            int power = 1;
+            for (int i = binary.size() - 1; i >= 0; --i) {
+                decimal += (binary[i] - '0') * power;
+                power *= 2;
+            }
+            decimal += result;
+            return -decimal;
+        }
+        else {
+            int result = 0;
+            int power = 1;
+            for (int i = binary.size() - 1; i >= 0; --i) {
+                result += (binary[i] - '0') * power;
+                power *= 2;
+            }
+            return result;
+        }
+    }
+
+    // Перевод из 10ой в 2ую СИ
+    static std::string toBinary(int decimal) {
+        char binary[BINARY_SIZE + 1];
+        int index = 0;
+        bool isNegative = false;
+
+        if (decimal < 0) {
+            isNegative = true;
+            decimal = -decimal;
+        }
+
+        // Преобразование десятичного числа в двоичное
+        while (decimal > 0) {
+            binary[index++] = (decimal % 2) + '0';
+            decimal /= 2;
+        }
+
+        // Дополнение нулями до размера BINARY_SIZE
+        while (index < BINARY_SIZE) {
+            binary[index++] = '0';
+        }
+        binary[index] = '\0';
+
+        // Реверсирование строки, чтобы получить корректное двоичное представление
+        reverseString(binary, BINARY_SIZE);
+
+        // Если число было отрицательным, применяем дополнительный код
+        if (isNegative) {
+            // Инвертируем биты
+            for (int i = 0; i < BINARY_SIZE; i++) {
+                binary[i] = binary[i] == '1' ? '0' : '1';
+            }
+
+            // Добавляем 1 к инвертированному значению
+            int carry = 1;
+            for (int i = BINARY_SIZE - 1; i >= 0; --i) {
+                if (binary[i] == '1' && carry == 1) {
+                    binary[i] = '0';
+                }
+                else {
+                    if (carry == 1) {
+                        binary[i] = '1';
+                        carry = 0;
+                    }
+                }
+            }
+        }
+
+        return std::string(binary);
+};
+
+// Класс для вычисления постфиксных выражений в двоичной системе
+class PostfixBinCalc {
+public:
+    void evaluatePostfix(const std::string& expression) { //Функция работы с постфиксным выражением
+        Stack stack; // Инициализация стека
+        std::stringstream iss(expression); // Считывание выражения и разбиение на токены
+        std::string token;
+
+        while (iss >> token) {
+            if (token == "+" || token == "-" || token == "*") {
+                if (stack.isEmpty()) { // Проверка на пустоту
+                    throw std::invalid_argument("Invalid postfix expression!");
+                }
+                std::string value2 = stack.pop();
+                if (stack.isEmpty()) { // Проверка на пустоту
+                    throw std::invalid_argument("Invalid postfix expression!");
+                }
+                std::string value1 = stack.pop();
+
+                std::string result;
+
+                if (token == "+") {
+                    result = BinaryNumber::addBinary(value1, value2);
+                }
+                else if (token == "-") {
+                    result = BinaryNumber::subtractBinary(value1, value2);
+                }
+                else if (token == "*") {
+                    result = BinaryNumber::multiplyBinary(value1, value2);
+                }
+                stack.push(result);
+            }
+            else {
+                if ((token.find('.') != std::string::npos) || (token.find(',') != std::string::npos)) { // Проверка на целочисленный тип
+                    throw std::invalid_argument("Error in number! The number entered incorrectly: " + token);
+                }
+                try {
+                    int value = std::stoi(token); // Преобразование строки в число
+                    std::string binaryValue = BinaryNumber::toBinary(value);
+                    stack.push(binaryValue);
+                }
+                catch (const std::invalid_argument& exp) {
+                    throw std::invalid_argument("Invalid token in postfix expression");
+                }
+            }
+        }
+
+        if (stack.isEmpty()) {
+            throw std::invalid_argument("Invalid postfix expression");
+        }
+
+        std::string result = stack.pop();
+
+        if (!stack.isEmpty()) {
+            throw std::invalid_argument("Invalid postfix expression");
+        }
+
+        std::cout << "Result in binary form: " << result << std::endl;
+        std::cout << "Result in decimal form: " << BinaryNumber::toDecimal(result) << std::endl;
+    }
+};
+
+int main() {
+    setlocale(LC_ALL, "rus");
+    PostfixBinCalc calc;
+    std::string expression;
+
+    std::cout << "Enter a postfix expression: ";
+    std::getline(std::cin, expression);
+
+    try {
+        calc.evaluatePostfix(expression);
+    }
+    catch (const std::exception& exp) {
+        std::cout << exp.what() << std::endl;
+    }
+
+}
